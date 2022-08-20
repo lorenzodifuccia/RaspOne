@@ -1,0 +1,13 @@
+.idea/
+.DS_Store
+
+venv/
+*.pyc
+**/__pycache__/
+
+logs/
+*.log
+
+personal_modules/
+utils/
+*.sh

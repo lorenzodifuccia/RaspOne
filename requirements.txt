@@ -1,0 +1,5 @@
+python-telegram-bot>=13.13
+requests>=2.28.1
+cachetools>=4.2.2
+humanize>=4.3.0
+asana>=1.0.0

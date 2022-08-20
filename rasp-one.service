@@ -1,0 +1,13 @@
+[Unit]
+Description=RaspOne: the modular Telegram bot (https://www.github.com/lorenzodifuccia/RaspOne)
+After=network.target network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+Restart=always
+ExecStart=/home/pi/Documents/RaspOne/venv/bin/python3 /home/pi/Documents/RaspOne/rasp_one.py
+
+[Install]
+WantedBy=multi-user.target
