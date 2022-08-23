@@ -1,6 +1,7 @@
 import json
 import base64
 import logging
+import datetime
 import telegram
 import humanize
 
@@ -37,11 +38,13 @@ class ModuleTorrent(RaspOneBaseModule):
         self.transmission_service_name = "transmission"
 
         self.watcher = None
-        self.watcher_timer = 15  # sec
+        self.watcher_timer = datetime.timedelta(seconds=15)
         self._watcher_set = set()
         self.start_watcher()
 
     def command(self, update, context):
+        self.start_watcher()
+
         markdown = telegram.ParseMode.MARKDOWN
         keyboard = None
 
@@ -163,10 +166,6 @@ class ModuleTorrent(RaspOneBaseModule):
             self.stop_watcher()
             return
 
-        status, error = self.core.server.is_process_running(self.transmission_service_name)  # Check if running
-        if not status or error:
-            return
-
         torrents, error = self.get_torrent_list()
         if not error and len(torrents):
             if len(self._watcher_set):
@@ -177,8 +176,15 @@ class ModuleTorrent(RaspOneBaseModule):
                                            "#*{id}* - `{name}`".format_map(completed_torrent),
                                            markdown=True)
 
-            self._watcher_set.clear()
+                self._watcher_set.clear()
+
             self._watcher_set.update(x["id"] for x in torrents if x["percentDone"] < 1)
+            if len(self._watcher_set):
+                self.watcher.job.trigger.interval = self.watcher_timer
+                return
+
+        self.watcher.job.trigger.interval = min(self.watcher.job.trigger.interval + datetime.timedelta(seconds=30),
+                                                datetime.timedelta(minutes=5))
 
     # RPC API
     def get_torrent_list(self):

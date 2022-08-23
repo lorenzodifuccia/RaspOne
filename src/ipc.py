@@ -42,8 +42,7 @@ class IPC:
         for s in list(self.services.keys()):
             self.remove_service(s)
 
-    def shutdown(self):
-        # TODO: NOT USED
+    def terminate(self):
         self.ipc_server.shutdown()
         self.ipc_server.server_close()
 

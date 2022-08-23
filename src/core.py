@@ -211,19 +211,25 @@ class RaspOne:
         return wrapped
 
     # Log + Send Message
-    def log(self, lvl, msg: str, *args, **kwargs):
+    def log(self, lvl, msg: str, network_error=False, *args, **kwargs):
         """
         Logging function.
         If the logging level (lvl parameter) is " > logging.INFO", it will send the log message also via bot chat.
         General configuration of the logging library present in the main (`rasp_one.py`).
         """
-        if lvl > logging.INFO:
-            self.send_message(
-                ("😧 Warning 😧" if lvl == logging.WARNING else
-                 ("😨 ERROR 😰" if lvl == logging.ERROR else "😱 CRITICAL 😱")) + "\n" + msg,
-                log=False,
-                markdown=False
-            )
+        if lvl > logging.INFO and not network_error:
+            try:
+                self.send_message(
+                    ("😧 Warning 😧" if lvl == logging.WARNING else
+                     ("😨 ERROR 😰" if lvl == logging.ERROR else "😱 CRITICAL 😱")) + "\n" +
+                    msg[:telegram.constants.MAX_MESSAGE_LENGTH - 4] +
+                    ("" if len(msg) < telegram.constants.MAX_MESSAGE_LENGTH else "..."),
+                    log=False,
+                    markdown=False
+                )
+
+            except (telegram.TelegramError, Exception):
+                pass
 
         module_logger.log(lvl, "[R1] " + msg, *args, **kwargs)
 
@@ -248,7 +254,9 @@ class RaspOne:
     def _error_handler(self, update, context):
         tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
         tb_string = '\n'.join(tb_list)
-        self.log(logging.ERROR, "Update ID '%s' caused error: %s" % (update.update_id if update else "N/A", tb_string))
+        self.log(lvl=logging.ERROR,
+                 msg="Update ID '%s' caused error: %s" % (update.update_id if update else "N/A", tb_string),
+                 network_error=isinstance(context.error, telegram.error.NetworkError))
 
     # Killing
     def restart(self):
@@ -287,6 +295,12 @@ class RaspOne:
             self.ipc.remove_service(module_name)
 
         self.log(logging.INFO, "Deleted module: %s" % module_instance)
+
+    def terminate(self):
+        self.kill()
+        self.ipc.terminate()
+        self.updater.stop()
+        self.log(logging.WARNING, "Terminated...")
 
 
 # Exception

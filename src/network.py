@@ -94,7 +94,7 @@ class Network:
                        if req_obj["req"].headers else "") + "\n" + \
                       ('\n'.join('{}: {}'.format(k, v) for k, v in req_obj["req"]._cookies.items())  # PrepareRequest
                        if req_obj["req"]._cookies else "") + "\n" + \
-                      (str(req_obj["req"].body) if hasattr(req_obj["req"], "body") and len(req_obj["req"].body) else "")
+                      (str(req_obj["req"].body) if hasattr(req_obj["req"], "body") and req_obj["req"].body else "")
 
         if "res" in req_obj:
             output += "-- RESPONSE %d --\n" % request_id + \
@@ -103,7 +103,7 @@ class Network:
                        if req_obj["res"].headers else "") + "\n" + \
                       ('\n'.join('{}: {}'.format(k, v) for k, v in req_obj["res"].cookies.items())
                        if req_obj["res"].cookies else "") + "\n" + \
-                      (req_obj["res"].text if hasattr(req_obj["res"], "text") and len(req_obj["res"].text) else "")
+                      (req_obj["res"].text if hasattr(req_obj["res"], "text") and req_obj["res"].text else "")
 
         return output
 

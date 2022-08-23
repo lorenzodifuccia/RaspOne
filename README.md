@@ -79,6 +79,7 @@ nano rasp_conf.ini
 sudo ln -s /home/pi/Documents/RaspOne/rasp-one.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl start rasp-one.service
+sudo systemctl enable rasp-one.service
 
 echo "enjoy :)"
 ```

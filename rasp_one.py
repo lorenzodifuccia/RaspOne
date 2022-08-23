@@ -21,12 +21,15 @@ def main():
 
     attempt = 0
     reset_attempt = datetime.datetime.now()
-    while attempt < 5:
+    terminated = False
+    while attempt < 5 and not terminated:
         try:
             rasp_one = RaspOne()
             rasp_one.start()
             rasp_one.updater.start_polling()
             rasp_one.updater.idle()
+            rasp_one.terminate()
+            terminated = True
 
         except RaspOneException as handled_exception:
             main_logger.error("Error in main: %s" % handled_exception, exc_info=True, stack_info=True)
