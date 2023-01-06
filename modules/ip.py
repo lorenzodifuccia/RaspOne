@@ -25,7 +25,7 @@ class ModuleIp(RaspOneBaseModule):
         self.history = []
         self.last_ip = self.prev_ip = None
 
-    def command(self, update, context):
+    async def command(self, update, context):
         message = ""
         if context.args[0] == "get":
             ipv6 = False
@@ -56,7 +56,7 @@ class ModuleIp(RaspOneBaseModule):
                       (("\n".join(f"💻 IP `{x[0]}` - {humanize.naturaldate(x[1])}" for x in self.history))
                        if len(self.history) else "_Empty_")
 
-        update.effective_message.reply_text(message, parse_mode=telegram.ParseMode.MARKDOWN)
+        await update.effective_message.reply_text(message, parse_mode=telegram.constants.ParseMode.MARKDOWN)
 
     def get_ip_address(self, ipv6=False):
         curl_response, request_id = self.network.curl(self.api64_url if ipv6 else self.api_url, parse_json=False)

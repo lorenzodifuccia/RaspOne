@@ -29,6 +29,7 @@ class Server:
 
         except (subprocess.SubprocessError, subprocess.CalledProcessError, OSError, Exception) as exec_error:
             module_logger.error("[SERVER] Subprocess error.", exc_info=True, stack_info=True)
+            self.lock.release()
             raise ServerExecutionException(exec_error)
 
         finally:
@@ -60,14 +61,6 @@ class Server:
 
         else:
             return False, None
-
-    def kill_proc(self, proc):
-        self.lock.acquire()
-        proc.terminate()
-        if proc in self.running_processes:
-            self.running_processes.remove(self.running_processes.index(proc))
-
-        self.lock.release()
 
     def kill(self):
         self.lock.acquire()

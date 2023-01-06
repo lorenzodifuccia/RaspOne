@@ -31,9 +31,9 @@ class ModuleSSH(RaspOneBaseModule):
         module_logger.info("SSH Alert: %s" % message.encode("unicode_escape").decode("utf-8"))
         return self.core.send_message("🚨 SSH Alert 🚨:\n%s" % message)
 
-    def command(self, update, context):
+    async def command(self, update, context):
         message = ""
-        markdown = telegram.ParseMode.MARKDOWN
+        markdown = telegram.constants.ParseMode.MARKDOWN
 
         if context.args[0] == "status":
             status, error = self.core.server.is_process_running("sshd")
@@ -75,7 +75,7 @@ class ModuleSSH(RaspOneBaseModule):
             else:
                 message += "\nED25519: `%s`" % ed25519_fingerprint
 
-        update.effective_message.reply_text("SSH:\n" + message, parse_mode=markdown)
+        await update.effective_message.reply_text("SSH:\n" + message, parse_mode=markdown)
 
     def _grep_ssh_port(self):
         proc, stdout, stderr = self.core.server.run(("grep", '"Port "', "/etc/ssh/sshd_config"))

@@ -26,10 +26,10 @@ class ModulePomodoro(RaspOneBaseModule):
         self.updater_job = None
         self.last_timer = None
 
-    def command(self, update, context):
+    async def command(self, update, context):
         if context.args[0] == "stop":
             self.stop_job()
-            update.effective_message.reply_text("Pomodoro ⏰ OFF")
+            await update.effective_message.reply_text("Pomodoro ⏰ OFF")
             return
 
         elif context.args[0] == "status":
@@ -42,7 +42,7 @@ class ModulePomodoro(RaspOneBaseModule):
                     datetime.datetime.now() - (self.last_timer + datetime.timedelta(minutes=self.interval))
                 )
 
-            update.effective_message.reply_text(message)
+            await update.effective_message.reply_text(message)
             return
 
         self.interval = 20
@@ -56,12 +56,12 @@ class ModulePomodoro(RaspOneBaseModule):
             self.timer_message = " ".join(context.args)
 
         self.start_job()
-        update.effective_message.reply_text("Pomodoro ⏰ ON: set to %s minutes" % self.interval)
+        await update.effective_message.reply_text("Pomodoro ⏰ ON: set to %s minutes" % self.interval)
 
     def start_job(self):
         self.stop_job()
         self.last_timer = datetime.datetime.now()
-        self.updater_job = self.core.updater.job_queue.run_repeating(self.updater, interval=self.interval * 60)
+        self.updater_job = self.core.application.job_queue.run_repeating(self.updater, interval=self.interval * 60)
 
     def stop_job(self):
         if self.updater_job:
@@ -69,6 +69,6 @@ class ModulePomodoro(RaspOneBaseModule):
 
         self.updater_job = None
 
-    def updater(self, _):
+    async def updater(self, _):
         self.last_timer = datetime.datetime.now()
         self.core.send_message(self.timer_message, markdown=True)

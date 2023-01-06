@@ -1,13 +1,13 @@
 import sys
+import asyncio
 import pkgutil
 import logging
 import importlib
 import traceback
 
-
 import telegram
-from telegram.chataction import ChatAction
-from telegram.ext import Updater, CommandHandler
+import telegram.ext
+from telegram.constants import ChatAction
 
 from src import config, DEFAULT_NAME, MODULES_PATH, PERSONAL_MODULES_PATH
 from src.ipc import IPC
@@ -34,20 +34,16 @@ class RaspOne:
 
         self.ipc = None
         self.server = None
+        self.application = None
+
+        self._boot_telegram_application()
+        self._event_loop = None
 
         self.modules = {
             "instances": dict(),
             "handlers": dict(),
             "callbacks": dict()
         }
-
-        self.bot = None
-        self.updater = None
-        if not self._boot_telegram_bot():
-            raise RaspOneException("Unable to boot Telegram Bot.")
-
-        if not self._boot_telegram_updater():
-            raise RaspOneException("Unable to boot Telegram Updater.")
 
     def start(self, restart=False):
         if restart:
@@ -66,23 +62,13 @@ class RaspOne:
         self.send_message("Hello! 👋👋")
 
     # Telegram
-    def _boot_telegram_bot(self):
+    def _boot_telegram_application(self):
         try:
-            self.bot = telegram.Bot(self.bot_token)
-            return True
+            self.application = telegram.ext.Application.builder().token(self.bot_token).build()
 
-        except telegram.TelegramError:
-            self.log(logging.ERROR, "Telegram Boot Error!", exc_info=True, stack_info=True)
-            return False
-
-    def _boot_telegram_updater(self):
-        try:
-            self.updater = Updater(self.bot_token, use_context=True)
-            return True
-
-        except telegram.TelegramError:
-            self.log(logging.ERROR, "Updater Boot Error!", exc_info=True, stack_info=True)
-            return False
+        except telegram.error.TelegramError:
+            self.log(logging.ERROR, "Application Boot Error!", exc_info=True, stack_info=True)
+            raise RaspOneException("Unable to boot Telegram Bot.")
 
     # Modules
     @staticmethod
@@ -119,9 +105,10 @@ class RaspOne:
             module_instance = module(self)
             self.modules["instances"].update({module_instance.NAME: module_instance})
 
-            command_handler = CommandHandler(module_instance.NAME,
-                                             self.wrap_handler(module_instance.NAME, module_instance.default_handler))
-            self.updater.dispatcher.add_handler(command_handler)
+            command_handler = telegram.ext.CommandHandler(module_instance.NAME,
+                                                          self.wrap_handler(module_instance.NAME,
+                                                                            module_instance.default_handler))
+            self.application.add_handler(command_handler)
             self.modules["handlers"].update({module_instance.NAME: command_handler})
 
         self._register_help()
@@ -137,13 +124,13 @@ class RaspOne:
     # Help
     def _register_help(self):
         if "help" in self.modules["handlers"]:
-            self.updater.dispatcher.remove_handler(self.modules["handlers"]["help"])
+            self.application.remove_handler(self.modules["handlers"]["help"])
 
-        help_handler = CommandHandler("help", self.wrap_handler("help", self._handle_help))
+        help_handler = telegram.ext.CommandHandler("help", self.wrap_handler("help", self._handle_help))
         self.modules["handlers"].update({"help": help_handler})
-        self.updater.dispatcher.add_handler(help_handler)
+        self.application.add_handler(help_handler)
 
-    def _handle_help(self, update, _):
+    async def _handle_help(self, update, _):
         commands_list = []
         description_list = []
 
@@ -156,27 +143,27 @@ class RaspOne:
         help_keyboard = [commands_list[i * 2:(i + 1) * 2] for i in range((len(commands_list) + 2 - 1) // 2)]
         reply_markup = telegram.ReplyKeyboardMarkup(help_keyboard, resize_keyboard=True)
 
-        update.effective_message.reply_text(self.HELP_MESSAGE + "\n".join(description_list),
-                                            reply_markup=reply_markup,
-                                            parse_mode=telegram.ParseMode.MARKDOWN)
+        await update.effective_message.reply_text(self.HELP_MESSAGE + "\n".join(description_list),
+                                                  reply_markup=reply_markup,
+                                                  parse_mode=telegram.constants.ParseMode.MARKDOWN)
 
     # Callback Handlers
     def register_query_callback(self, callback_name, callback):
         query_handler = telegram.ext.CallbackQueryHandler(self.wrap_handler(callback_name, callback))
-        self.updater.dispatcher.add_handler(query_handler)
+        self.application.add_handler(query_handler)
         self.modules["callbacks"].update({callback_name: query_handler})
 
     def register_message_callback(self, callback_name, callback, message_filter=None):
         query_handler = telegram.ext.MessageHandler(message_filter if message_filter
-                                                    else telegram.ext.filters.Filters.all,
+                                                    else telegram.ext.filters.ALL,
                                                     self.wrap_handler(callback_name, callback))
-        self.updater.dispatcher.add_handler(query_handler)
+        self.application.add_handler(query_handler)
         self.modules["callbacks"].update({callback_name: query_handler})
 
     def remove_callback(self, callback_name):
         if callback_name in self.modules["callbacks"]:
             query_handler = self.modules["callbacks"].pop(callback_name)
-            self.updater.dispatcher.remove_handler(query_handler)
+            self.application.remove_handler(query_handler)
 
     def remove_callbacks(self):
         for callback_name in list(self.modules["callbacks"].keys()):
@@ -188,7 +175,7 @@ class RaspOne:
         """
         This wrapper is used with CommandHandler and CallbackQueryHandler objects in order to wrap their callback.
         """
-        def wrapped(update, context, *args, **kwargs):
+        async def wrapped(update, context, *args, **kwargs):
             # Authenticate the user
             user_id = update.effective_user.id
             if str(user_id) != config["Telegram"]["ChatId"]:
@@ -201,12 +188,14 @@ class RaspOne:
                 if not update.callback_query.data.startswith(callback_tag.upper()):
                     return
 
+                update.callback_query._unfreeze()
                 update.callback_query.data = update.callback_query.data.replace(callback_tag.upper() + "_", "")
+                update.callback_query._freeze()
 
             # Add the TYPING action to the bot while processing the callback
-            context.bot.send_chat_action(chat_id=config["Telegram"]["ChatId"], action=ChatAction.TYPING)
-
-            return func(update, context, *args, **kwargs)
+            await context.bot.send_chat_action(chat_id=config["Telegram"]["ChatId"], action=ChatAction.TYPING)
+            await func(update, context, *args, **kwargs)
+            return
 
         return wrapped
 
@@ -222,13 +211,13 @@ class RaspOne:
                 self.send_message(
                     ("😧 Warning 😧" if lvl == logging.WARNING else
                      ("😨 ERROR 😰" if lvl == logging.ERROR else "😱 CRITICAL 😱")) + "\n" +
-                    msg[:telegram.constants.MAX_MESSAGE_LENGTH - 4] +
-                    ("" if len(msg) < telegram.constants.MAX_MESSAGE_LENGTH else "..."),
+                    msg[:telegram.constants.MessageLimit.MAX_TEXT_LENGTH - 4] +
+                    ("" if len(msg) < telegram.constants.MessageLimit.MAX_TEXT_LENGTH else "..."),
                     log=False,
                     markdown=False
                 )
 
-            except (telegram.TelegramError, Exception):
+            except (telegram.error.TelegramError, Exception) as unexpected_error:
                 pass
 
         module_logger.log(lvl, "[R1] " + msg, *args, **kwargs)
@@ -238,20 +227,28 @@ class RaspOne:
             if log:
                 self.log(logging.INFO, "Sending message: %s" % message)
 
-            self.bot.send_message(self.chat_id, message,
-                                  parse_mode=telegram.ParseMode.MARKDOWN if markdown else None,
-                                  reply_markup=telegram.ReplyKeyboardRemove())
+            send_message_coroutine = self.application.bot.send_message(
+                self.chat_id,
+                message,
+                parse_mode=telegram.constants.ParseMode.MARKDOWN if markdown else None,
+                reply_markup=telegram.ReplyKeyboardRemove()
+            )
+
+            if not self._event_loop:
+                self._event_loop = asyncio.get_event_loop()
+
+            self._event_loop.create_task(send_message_coroutine)
             return True
 
-        except telegram.TelegramError as send_error:
+        except telegram.error.TelegramError as send_error:
             self.log(logging.ERROR, "Send message error! Reason: %s" % send_error, exc_info=True, stack_info=True)
             return False
 
     # Errors
     def _register_error(self):
-        self.updater.dispatcher.add_error_handler(self._error_handler)
+        self.application.add_error_handler(self._error_handler)
 
-    def _error_handler(self, update, context):
+    async def _error_handler(self, update, context):
         tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
         tb_string = '\n'.join(tb_list)
         self.log(lvl=logging.ERROR,
@@ -265,13 +262,8 @@ class RaspOne:
 
     def kill(self):
         self.kill_modules()
-
-        for k in list(self.modules["handlers"].keys()):
-            handler = self.modules["handlers"].pop(k)
-            self.updater.dispatcher.remove_handler(handler)
-            self.log(logging.INFO, "Deleted handler: %s (%s)" % (k, handler))
-
         self.remove_callbacks()
+        self.clean_application()
 
         self.server.kill()
         self.ipc.kill()
@@ -289,17 +281,26 @@ class RaspOne:
             return
 
         module_instance = self.modules["instances"].pop(module_name)
-        self.updater.dispatcher.remove_handler(self.modules["handlers"].pop(module_name))
+        self.application.remove_handler(self.modules["handlers"].pop(module_name))
 
         if module_name in self.ipc.services:
             self.ipc.remove_service(module_name)
 
         self.log(logging.INFO, "Deleted module: %s" % module_instance)
 
+    def clean_application(self):
+        for handler in list(self.application.handlers.values()):
+            self.application.remove_handler(handler)
+
+        for error_handler in list(self.application.error_handlers.keys()):
+            self.application.remove_error_handler(error_handler)
+
+        for job in list(self.application.job_queue.jobs()):
+            job.schedule_removal()
+
     def terminate(self):
         self.kill()
         self.ipc.terminate()
-        self.updater.stop()
         self.log(logging.WARNING, "Terminated...")
 
 

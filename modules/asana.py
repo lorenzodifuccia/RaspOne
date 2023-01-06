@@ -32,7 +32,7 @@ class ModuleAsana(RaspOneBaseModule):
             except (ValueError, Exception):
                 module_logger.error("[Asana] Login error!", exc_info=True, stack_info=True)
 
-    def command(self, update, context):
+    async def command(self, update, context):
         if context.args[0] == "assign":
             if not self.access_token:
                 message = "Access Token not configured. Configure it on the configuration file of RaspOne."
@@ -45,7 +45,7 @@ class ModuleAsana(RaspOneBaseModule):
                 else:
                     message = ret_code[1] + "\nDone! 👍"
 
-            update.effective_message.reply_text(message)
+            await update.effective_message.reply_text(message)
 
     def _assign_to_me(self):
         tasks = []

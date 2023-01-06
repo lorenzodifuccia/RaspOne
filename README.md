@@ -1,6 +1,6 @@
 # RaspOne
-Modular Telegram bot designed for being run on a Raspberry Pi as a server.  
-**RaspOne** provides a list of predefined modules, described below, along with the ability to define and implement your own modules.  
+Modular Telegram bot designed for being run on a Raspberry Pi as a swiss-army server.  
+**RaspOne** provides a list of modules, described below, along with the ability to define and implement your own ones.  
 
 Default modules are stored in the [`modules/`](modules/) directory.  
 Personal modules and configuration can be stored in the `personal_modules/` directory.  
@@ -40,6 +40,11 @@ _Please, consider **RaspOne** as an english word and not an italian one... 😊_
   - `/pomodoro start 15 TIMER`
   - `/pomodoro stop`
   - `/pomodoro status`
+- **S3**: Save and manage objects on an AWS S3 bucket.
+  - `/s3 status` (show if the command is available)
+  - `/s3 list` (list objects on S3 bucket)
+  - `/s3 save` (save file sent in the chat on S3 bucket)
+  - `/s3 delete` (delete object from S3 bucket)
 - **SSH**: Shows SSH info and get alerts on every SSH activity.
   - `/ssh status`
   - `/ssh port` (show running port)
@@ -50,7 +55,7 @@ _Please, consider **RaspOne** as an english word and not an italian one... 😊_
   - `/torrent status`
   - `/torrent list` (list torrents)
   - `/torrent add` (add a torrent from a `magnet:` URL or a `.torrent` file sent in the chat)
-  - `/torrent remove` (remove a torrent, keeping local data)
+  - `/torrent remove` (remove a torrent, keeping local data if completed)
   - `/torrent pause` (pause or resume a torrent)
 - **VPN**: Shows VPN info and get alerts on every VPN activity.
   - `/vpn status`
@@ -84,13 +89,15 @@ sudo systemctl enable rasp-one.service
 echo "enjoy :)"
 ```
 
+### Configuration
 Some modules provided by **RaspOne** use some scripts executed by services like `sshd` or `openvpn` to receive alerts on a so-called "IPC" server listener.
 Other modules requires permissions to be granted.  
 Every module that require a different configuration, drops a script in the `utils/` directory, created after **RaspOne** is started.  
 
 List of modules that require a configuration on [`rasp_conf.ini`](rasp_conf.ini) or in `utils/`:
 - **Asana**: add token on `rasp_conf.ini`.
-- **SSH**: see `utils/rasp_ssh_alert.sh` .
+- **S3**: see `rasp_conf.ini` and `modules/s3.py`.
+- **SSH**: see `utils/rasp_ssh_alert.sh`.
 - **System**: see `utils/rasp_one_system.conf`.
 - **Torrent**: modify download directory on `rasp_conf.ini`, specify also the RPC URL if different from the default one.
 - **VPN**: see `utils/rasp_vpn_alert.sh`, modify profiles directory path on `rasp_conf.ini` (see [`pivpn`](https://www.pivpn.io/)).
@@ -111,14 +118,17 @@ class ModuleExample(RaspOneBaseModule):
     def __init__(self, core):
         super().__init__(core)
 
-    def command(self, update, context):
+    async def command(self, update, context):
         if context.args[0] == "yes":
-            update.effective_message.reply_text("No 😒")
+            await update.effective_message.reply_text("No 😒")
 ```
 
 For Alert, Updater and MessageHandler see respectively [`ssh`](modules/ssh.py), [`pomodoro`](modules/pomodoro.py) and [`torrent`](modules/torrent.py) modules.
 
 ## TODO
+- [X] Update to `python-telegram-bot v20.0`
+- [ ] Test new code for `python-telegram-bot v20.0`
+- [ ] Add wiki for `/s3` module
 - [ ] Handle systemctl stop signal
 - [ ] Logging, everything...
 - [ ] ASCII decode issue: log UTF-8

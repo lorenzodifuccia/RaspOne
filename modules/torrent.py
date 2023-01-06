@@ -42,10 +42,10 @@ class ModuleTorrent(RaspOneBaseModule):
         self._watcher_set = set()
         self.start_watcher()
 
-    def command(self, update, context):
+    async def command(self, update, context):
         self.start_watcher()
 
-        markdown = telegram.ParseMode.MARKDOWN
+        markdown = telegram.constants.ParseMode.MARKDOWN
         keyboard = None
 
         if context.args[0] == "status":
@@ -87,9 +87,9 @@ class ModuleTorrent(RaspOneBaseModule):
 
             self.register_message_callback("ADD", self.message_handler_add)
 
-        update.effective_message.reply_text(message, reply_markup=keyboard, parse_mode=markdown)
+        await update.effective_message.reply_text(message, reply_markup=keyboard, parse_mode=markdown)
 
-    def query_handler_pause(self, update, _):
+    async def query_handler_pause(self, update, _):
         query = update.callback_query
         torrents, error = self.get_torrent(query.data)
         if error:
@@ -104,10 +104,10 @@ class ModuleTorrent(RaspOneBaseModule):
             else:
                 message = "👍"
 
-        query.edit_message_text(text=message)
+        await query.edit_message_text(text=message)
         self.remove_callback("PAUSE")
 
-    def query_handler_remove(self, update, _):
+    async def query_handler_remove(self, update, _):
         query = update.callback_query
         torrents, error = self.get_torrent(query.data)
         if error:
@@ -122,13 +122,13 @@ class ModuleTorrent(RaspOneBaseModule):
             else:
                 message = "👍"
 
-        query.edit_message_text(text=message)
+        await query.edit_message_text(text=message)
         self.remove_callback("REMOVE")
 
-    def message_handler_add(self, update, _):
+    async def message_handler_add(self, update, _):
         torrent = None
         markdown = None
-        message = "Invalid torrent file/URL!"
+        message = "Error: invalid torrent file/URL!"
         if update.effective_message.text:
             if update.effective_message.text.startswith("magnet:"):
                 torrent = update.effective_message.text
@@ -145,15 +145,15 @@ class ModuleTorrent(RaspOneBaseModule):
             else:
                 message = "Torrent {state} 👍\n" \
                           "#*{id}* - `{name}`".format_map(status)
-                markdown = telegram.ParseMode.MARKDOWN
+                markdown = telegram.constants.ParseMode.MARKDOWN
 
-        update.effective_message.reply_text(message, parse_mode=markdown)
+        await update.effective_message.reply_text(message, parse_mode=markdown)
         self.remove_callback("ADD")
 
     # Watcher/Updater
     def start_watcher(self):
         self.stop_watcher()
-        self.watcher = self.core.updater.job_queue.run_repeating(self.watch_torrent, interval=self.watcher_timer)
+        self.watcher = self.core.application.job_queue.run_repeating(self.watch_torrent, interval=self.watcher_timer)
 
     def stop_watcher(self):
         if self.watcher:
@@ -161,7 +161,7 @@ class ModuleTorrent(RaspOneBaseModule):
 
         self.watcher = None
 
-    def watch_torrent(self, _):
+    async def watch_torrent(self, _):
         if not self.watcher:  # Kill switch
             self.stop_watcher()
             return
@@ -235,7 +235,8 @@ class ModuleTorrent(RaspOneBaseModule):
         return True, None
 
     def remove_torrent(self, torrent):
-        rpc_response, err = self.rpc("torrent-remove", {"ids": [torrent["id"]]})
+        rpc_response, err = self.rpc("torrent-remove", {"ids": [torrent["id"]],
+                                                        "delete-local-data": True if torrent["status"] == 4 else False})
         if err:
             return False, err
 

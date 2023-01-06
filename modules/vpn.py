@@ -33,9 +33,9 @@ class ModuleVPN(RaspOneBaseModule):
         module_logger.info("VPN Alert: %s" % message.encode("unicode_escape").decode("utf-8"))
         return self.core.send_message("🚨 VPN Alert 🚨:\n%s" % message)
 
-    def command(self, update, context):
+    async def command(self, update, context):
         message = ""
-        markdown = telegram.ParseMode.MARKDOWN
+        markdown = telegram.constants.ParseMode.MARKDOWN
 
         if context.args[0] == "status":
             status, error = self.core.server.is_process_running("openvpn")
@@ -64,15 +64,15 @@ class ModuleVPN(RaspOneBaseModule):
                     if not err:
                         profile_file_str = self.regex_remote_host.sub(ip, profile_file_str)
 
-                    update.effective_message.reply_document(document=profile_file_str.encode(),
-                                                            filename=os.path.basename(profile_path))
+                    await update.effective_message.reply_document(document=profile_file_str.encode(),
+                                                                  filename=os.path.basename(profile_path))
                     return
 
             except OSError as os_error:
                 message = "Error opening the client file: %s" % os_error
                 markdown = None
 
-        update.effective_message.reply_text("VPN: " + message, parse_mode=markdown)
+        await update.effective_message.reply_text("VPN: " + message, parse_mode=markdown)
 
     @staticmethod
     def _build_utils():

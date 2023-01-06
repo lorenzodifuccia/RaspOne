@@ -26,8 +26,7 @@ def main():
         try:
             rasp_one = RaspOne()
             rasp_one.start()
-            rasp_one.updater.start_polling()
-            rasp_one.updater.idle()
+            rasp_one.application.run_polling(close_loop=False)
             rasp_one.terminate()
             terminated = True
 

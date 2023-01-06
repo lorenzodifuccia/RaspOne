@@ -23,11 +23,11 @@ class RaspOneBaseModule:
         self._build_utils()
 
     # Command
-    def command(self, update: telegram.Update, context: telegram.ext.CallbackContext):
+    async def command(self, update: telegram.Update, context: telegram.ext.CallbackContext):
         pass
 
     # Alert
-    def alert(self, message: str):
+    async def alert(self, message: str):
         pass
 
     # Callbacks
@@ -41,13 +41,13 @@ class RaspOneBaseModule:
         self.core.remove_callback(f"{self.NAME.upper()}_{tag}")
 
     # Default Handler - Used by core.py
-    def default_handler(self, update: telegram.Update, context: telegram.ext.CallbackContext):
+    async def default_handler(self, update: telegram.Update, context: telegram.ext.CallbackContext):
         self.core.remove_callbacks()
         # For 'unwanted touches', when a new command is received, old callbacks are discarded
 
         if isinstance(self.USAGE, str):
-            update.effective_message.reply_text("Usage:\n" + "- " + self.USAGE,
-                                                parse_mode=telegram.ParseMode.MARKDOWN)
+            await update.effective_message.reply_text("Usage:\n" + "- " + self.USAGE,
+                                                      parse_mode=telegram.constants.ParseMode.MARKDOWN)
             return
 
         elif not len(context.args) or context.args[0].lower() not in self.USAGE:
@@ -64,13 +64,14 @@ class RaspOneBaseModule:
                                                         resize_keyboard=True,
                                                         one_time_keyboard=True)
 
-            update.effective_message.reply_text("Usage:\n" + "\n".join(description_list),
-                                                reply_markup=reply_markup,
-                                                parse_mode=telegram.ParseMode.MARKDOWN)
+            await update.effective_message.reply_text("Usage:\n" + "\n".join(description_list),
+                                                      reply_markup=reply_markup,
+                                                      parse_mode=telegram.constants.ParseMode.MARKDOWN)
             return
 
         context.args[0] = context.args[0].lower()
-        return self.command(update, context)
+        await self.command(update, context)
+        return
 
     # Build module utils (scripts, config, ...)
     @staticmethod

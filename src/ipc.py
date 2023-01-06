@@ -110,6 +110,7 @@ class IPCHandler(socketserver.BaseRequestHandler):
             if "Bad file descriptor" not in os_error.strerror:
                 # TODO: Avoid raise?
                 module_logger.error("[IPC] OS error.", exc_info=True, stack_info=True)
+                self.lock.release()
                 raise os_error
 
         finally:
