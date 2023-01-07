@@ -112,13 +112,13 @@ class ModuleS3(RaspOneBaseModule):
             file_key = uuid.uuid4().urn[9:] + "/" + update.effective_message.document.file_name
             file_attached = await update.effective_message.document.get_file()
             file_bytearray = await file_attached.download_as_bytearray()
-            status, error = self.add_object(file_key, file_bytearray, update.effective_message.document.mime_type)
+            object_url, error = self.add_object(file_key, file_bytearray, update.effective_message.document.mime_type)
             if error:
                 message = str(error)
 
             else:
                 message = "Object added 👍\n" \
-                          f"• [{file_key}](https://{self.rasp_bucket_name}.s3.amazonaws.com/{file_key})"
+                          f"• [{file_key}]({object_url})"
                 markdown = telegram.constants.ParseMode.MARKDOWN
 
         await update.effective_message.reply_text(message, parse_mode=markdown)
@@ -149,8 +149,19 @@ class ModuleS3(RaspOneBaseModule):
         except (RaspOneException, Exception) as error:
             return False, error
 
-    def upload_file(self, object_name, filepath):
-        pass
+    def upload_file(self, object_key: str, file_path: str, object_mime=False):
+        try:
+            self._check_session()
+            client = self.session.client("s3")
+
+            with open(file_path, "rb") as file:
+                object_data = file.read()
+                response = client.put_object(Bucket=self.rasp_bucket_name, Key=object_key, Body=object_data,
+                                             **({'ContentType': object_mime} if object_mime else {}))
+                return f"https://{self.rasp_bucket_name}.s3.amazonaws.com/{object_key}", None
+
+        except Exception as error:
+            return False, error
 
     def add_object(self, object_key: str, object_data: bytearray, object_mime=False):
         try:
@@ -158,7 +169,7 @@ class ModuleS3(RaspOneBaseModule):
             client = self.session.client("s3")
             response = client.put_object(Bucket=self.rasp_bucket_name, Key=object_key, Body=object_data,
                                          **({'ContentType': object_mime} if object_mime else {}))
-            return True, None
+            return f"https://{self.rasp_bucket_name}.s3.amazonaws.com/{object_key}", None
 
         except Exception as error:
             return False, error

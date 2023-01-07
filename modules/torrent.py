@@ -22,7 +22,7 @@ class ModuleTorrent(RaspOneBaseModule):
         "status": "Check if `transmission` is running",
         "list": "List torrents",
         "add": "Add a torrent from a file or a magnet link",
-        "remove": "Remove a torrent (keeping local data)",
+        "remove": "Remove a torrent (keeping local data if completed)",
         "pause": "Pause or resume a torrent"
     }
 
