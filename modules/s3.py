@@ -187,7 +187,7 @@ class ModuleS3(RaspOneBaseModule):
                 f"(_Last modified: "
                 f"{humanize.naturaltime(datetime.datetime.now(obj['LastModified'].tzinfo) - obj['LastModified'])}, "
                 f"Size: {humanize.naturalsize(obj['Size'])}_)"
-                for obj in objects
+                for obj in sorted(objects, key=lambda o: o['LastModified'], reverse=True)
             )
 
         return objects_list_msg
