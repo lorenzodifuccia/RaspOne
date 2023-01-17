@@ -236,7 +236,8 @@ class ModuleTorrent(RaspOneBaseModule):
 
     def remove_torrent(self, torrent):
         rpc_response, err = self.rpc("torrent-remove", {"ids": [torrent["id"]],
-                                                        "delete-local-data": True if torrent["status"] == 4 else False})
+                                                        "delete-local-data": False
+                                                        if torrent["percentDone"] == 1 else True})
         if err:
             return False, err
 

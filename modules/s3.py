@@ -1,6 +1,8 @@
 import uuid
 import boto3
 import logging
+import datetime
+import humanize
 import telegram
 
 from src import config, DEFAULT_NAME
@@ -69,7 +71,7 @@ class ModuleS3(RaspOneBaseModule):
                 message = self._list_objects(objects)
 
                 if context.args[0] == "list" or not len(objects):
-                    message = "🪣 Objects:\n" + message
+                    message = "🪣 S3 Objects:\n" + message
 
                 else:
                     message = "🪣 Which object do you want to *delete*?\n" + message
@@ -180,8 +182,13 @@ class ModuleS3(RaspOneBaseModule):
             objects_list_msg = "_Empty_"
 
         else:
-            objects_list_msg = "\n".join(f"• [{obj['Key']}](https://{self.rasp_bucket_name}.s3.amazonaws.com/{obj['Key']})"
-                                         for obj in objects)
+            objects_list_msg = "\n".join(
+                f"• [{obj['Key']}](https://{self.rasp_bucket_name}.s3.amazonaws.com/{obj['Key']}) "
+                f"(_Last modified: "
+                f"{humanize.naturaltime(datetime.datetime.now(obj['LastModified'].tzinfo) - obj['LastModified'])}, "
+                f"Size: {humanize.naturalsize(obj['Size'])}_)"
+                for obj in objects
+            )
 
         return objects_list_msg
 
