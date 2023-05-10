@@ -135,7 +135,7 @@ class ModuleTorrent(RaspOneBaseModule):
 
         elif update.effective_message.document:
             if "torrent" in update.effective_message.document.mime_type:
-                torrent = update.effective_message.document.get_file().download_as_bytearray()
+                torrent = await (await update.effective_message.document.get_file()).download_as_bytearray()
 
         if torrent:
             status, error = self.add_torrent(torrent)
