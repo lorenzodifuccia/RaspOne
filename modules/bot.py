@@ -1,7 +1,8 @@
+import os
 import logging
 
-from src import DEFAULT_NAME
 from modules import RaspOneBaseModule
+from src import config, DEFAULT_NAME, UTILS_PATH
 
 module_logger = logging.getLogger(DEFAULT_NAME + ".module.bot")
 
