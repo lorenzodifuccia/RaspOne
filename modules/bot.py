@@ -38,3 +38,24 @@ class ModuleBot(RaspOneBaseModule):
                 )
             except ValueError:
                 pass
+
+    @staticmethod
+    def _build_utils():
+        script_template = \
+         """#!/bin/bash
+
+# Heartbeat CRON Check
+# sudo crontab -e
+# */60 * * * * /full/path/to/cron_check.sh
+
+STATUS=$(echo '{"service": "_heartbeat_"}' | nc {{IPC_HOST}} {{IPC_PORT}})
+if [[ "$STATUS" != "ok" ]]; then
+        service rasp-one stop
+        service rasp-one start
+fi
+"""
+        with open(os.path.join(UTILS_PATH, "rasp_cron_check.sh"), "w") as script:
+            script.write(script_template.replace("{{IPC_HOST}}", config["Server"]["IPCAddress"])
+                         .replace("{{IPC_PORT}}", config["Server"]["IPCPort"]))
+
+        module_logger.warning("** THIS MODULE REQUIRE YOUR ATTENTION, SEE LOGS AND utils/ DIRECTORY **")

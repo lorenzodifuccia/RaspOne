@@ -96,6 +96,7 @@ Every module that require a different configuration, drops a script in the `util
 
 List of modules that require a configuration on [`rasp_conf.ini`](rasp_conf.ini) or in `utils/`:
 - **Asana**: add token on `rasp_conf.ini`.
+- **Bot**: see `utils/rasp_cron_check.sh`.
 - **S3**: see `rasp_conf.ini` and `modules/s3.py`.
 - **SSH**: see `utils/rasp_ssh_alert.sh`.
 - **System**: see `utils/rasp_one_system.conf`.
