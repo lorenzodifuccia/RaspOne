@@ -88,15 +88,21 @@ class IPCHandler(socketserver.BaseRequestHandler):
                 raise ValueError
 
             elif message["service"] not in self.services:
-                module_logger.error("[IPC] Service not available: %s" % message)
-                raise ValueError
+                if message["service"] == "_heartbeat_":
+                    # New: heartbeat feature, needs test
+                    self.request.sendall("ok".encode())
 
-            module_logger.info(
-                "[IPC] Calling service %s: %s (%d)" % (message["service"], message, id(message))
-            )
-            result = self.services[message["service"]](message.get("message", None))
-            self.request.sendall(json.dumps({"ok": result}).encode())
-            module_logger.info("[IPC] Finished service %s: %d" % (message["service"], id(message)))
+                else:
+                    module_logger.error("[IPC] Service not available: %s" % message)
+                    raise ValueError
+
+            else:
+                module_logger.info(
+                    "[IPC] Calling service %s: %s (%d)" % (message["service"], message, id(message))
+                )
+                result = self.services[message["service"]](message.get("message", None))
+                self.request.sendall(json.dumps({"ok": result}).encode())
+                module_logger.info("[IPC] Finished service %s: %d" % (message["service"], id(message)))
 
         except (ValueError, TypeError, json.JSONDecodeError):
             module_logger.error("[IPC] Handling error.", exc_info=True, stack_info=True)
