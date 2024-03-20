@@ -47,12 +47,12 @@ class ModuleBot(RaspOneBaseModule):
 
 # Heartbeat CRON Check
 # sudo crontab -e
-# */60 * * * * /full/path/to/cron_check.sh
+# */60 * * * * /path/to/cron_check.sh >> /path/to/RaspOne/logs/cron.log 2>&1
 
 STATUS=$(echo '{"service": "_heartbeat_"}' | nc {{IPC_HOST}} {{IPC_PORT}})
 if [[ "$STATUS" != "ok" ]]; then
-        service rasp-one stop
-        service rasp-one start
+        /usr/sbin/service rasp-one stop
+        /usr/sbin/service rasp-one start
 fi
 """
         with open(os.path.join(UTILS_PATH, "rasp_cron_check.sh"), "w") as script:
